@@ -19,14 +19,16 @@
         
         #gameContainer {
             position: relative;
-            width: 800px;
-            height: 600px;
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            max-height: 600px;
             border: 2px solid #4a9eff;
             border-radius: 10px;
             overflow: hidden;
-            background: radial-gradient(circle at center, #000428 0%, #004e92 100%);
+            background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+            box-sizing: border-box;
         }
-        
         #gameCanvas {
             display: block;
             cursor: crosshair;
@@ -81,24 +83,12 @@
             font-size: 12px;
             opacity: 0.8;
         }
-        
-        .star {
-            position: absolute;
-            background: white;
-            border-radius: 50%;
-            opacity: 0.6;
-            animation: twinkle 2s infinite ease-in-out;
-        }
-        
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 1; }
-        }
     </style>
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <canvas id="gameCanvas" width="1000" height="1000"></canvas>
+        <!--NOTE: game height: 1000, width:800-->
         
         <div id="ui">
             <div>Score: <span id="score">0</span></div>
@@ -121,12 +111,15 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
+        const gameContainer = document.getElementById('gameContainer');
+        const containerWidth = gameContainer.offsetWidth;
+        const containerHeight = gameContainer.offsetHeight;
+
         // Game state
         let game = {
             score: 0,
             galaxy: 1,
-            zoom: 1.0,
+            zoom: 0.5,
             cameraY: 0,
             player: null,
             planets: [],
@@ -147,40 +140,39 @@
                 this.vy = 0;
                 this.onPlanet = null;
                 this.lastPlanet = null;
-                this.launchCooldown = 0;
-                this.rotation = 0;
-                this.trail = [];
+                this.launchCooldown = 120;
+                //this.trail = [];
             }
             
             update() {
                 if (this.onPlanet) {
-                    // Rotate around planet
+                    // Rotate planet
                     const rotationSpeed = 0.02 + (game.galaxy - 1) * 0.01;
-                    this.rotation += rotationSpeed;
+                    this.onPlanet.rotation += rotationSpeed;
                     
                     const distance = this.onPlanet.radius + this.radius + 5;
-                    this.x = this.onPlanet.x + Math.cos(this.rotation) * distance;
-                    this.y = this.onPlanet.y + Math.sin(this.rotation) * distance;
+                    this.x = this.onPlanet.x + Math.cos(this.onPlanet.rotation) * distance;
+                    this.y = this.onPlanet.y + Math.sin(this.onPlanet.rotation) * distance;
                     
-                    // Update launch direction
-                    game.launchDirection.x = Math.cos(this.rotation);
-                    game.launchDirection.y = Math.sin(this.rotation);
+                    // Update launch direction based on planet's rotation
+                    game.launchDirection.x = Math.cos(this.onPlanet.rotation);
+                    game.launchDirection.y = Math.sin(this.onPlanet.rotation);
                 } else {
                     // Flying through space
                     this.x += this.vx;
                     this.y += this.vy;
-                    
+
                     // Decrease launch cooldown
                     if (this.launchCooldown > 0) {
                         this.launchCooldown--;
                     }
-                    
                     // Add to trail
+                    /*
                     this.trail.push({ x: this.x, y: this.y });
                     if (this.trail.length > 10) {
                         this.trail.shift();
                     }
-                    
+                    */
                     // Check collision with planets (but not the one we just launched from)
                     for (let planet of game.planets) {
                         if (planet === this.lastPlanet && this.launchCooldown > 0) {
@@ -208,63 +200,57 @@
                         }
                     }
                     
-                    // Check if out of bounds
-                    if (this.x < -100 || this.x > 900 || this.y < -100 || this.y > 2100) {
-                        gameOver();
-                    }
+                   
                 }
             }
+                
             
-            landOnPlanet(planet) {
-                this.onPlanet = planet;
-                this.vx = 0;
-                this.vy = 0;
-                this.trail = [];
-                game.isLaunching = false;
-                
-                // Add score
-                game.score += 100;
-                updateUI();
-                
-                // Create landing particles
-                for (let i = 0; i < 15; i++) {
-                    game.particles.push(new Particle(
-                        this.x + (Math.random() - 0.5) * 20,
-                        this.y + (Math.random() - 0.5) * 20,
-                        (Math.random() - 0.5) * 4,
-                        (Math.random() - 0.5) * 4,
-                        '#4a9eff',
-                        30
-                    ));
-                }
-            }
             
             launch() {
                 if (this.onPlanet && !game.isLaunching) {
                     this.lastPlanet = this.onPlanet; // Remember the planet we're launching from
-                    this.launchCooldown = 15; // Ignore collision with launch planet for 15 frames
+                    this.launchCooldown = 120; // Ignore collision with launch planet for 15 frames
                     this.onPlanet = null;
-                    const launchSpeed = 8;
+                    const launchSpeed = 10;
                     this.vx = game.launchDirection.x * launchSpeed;
                     this.vy = game.launchDirection.y * launchSpeed;
                     game.isLaunching = true;
                     
                     // Create launch particles
-                    for (let i = 0; i < 20; i++) {
-                        game.particles.push(new Particle(
-                            this.x + (Math.random() - 0.5) * 15,
-                            this.y + (Math.random() - 0.5) * 15,
-                            (Math.random() - 0.5) * 6,
-                            (Math.random() - 0.5) * 6,
-                            '#ff6b35',
-                            40
-                        ));
-                    }
+                    
                 }
             }
             
+            landOnPlanet(planet) {
+                // Stop the player's movement
+                this.vx = 0;
+                this.vy = 0;
+
+                // Set the player to be "on the planet"
+                this.onPlanet = planet;
+
+                // Calculate the player's position on the planet's surface
+                const distance = planet.radius + this.radius; // Distance from the planet's center to the player's surface
+                this.x = planet.x + Math.cos(planet.rotation) * distance;
+                this.y = planet.y + Math.sin(planet.rotation) * distance;
+
+                // Reset launch cooldown to prevent immediate re-launch
+                this.launchCooldown = 30; // Adjust cooldown duration as needed
+
+                // Update the last planet to prevent collision during cooldown
+                this.lastPlanet = planet;
+
+                // Trigger any planet-specific effects (e.g., score updates)
+                game.score += planet.points || 0; // Add points if the planet has a score value
+                game.isLaunching = false;
+                // Add score
+                game.score += 100;
+                updateUI();
+                
+                // Create landing particles
+            }
             draw() {
-                // Draw trail
+               /* // Draw trail
                 if (this.trail.length > 1) {
                     ctx.strokeStyle = 'rgba(74, 158, 255, 0.6)';
                     ctx.lineWidth = 3;
@@ -274,7 +260,7 @@
                         ctx.lineTo(this.trail[i].x, this.trail[i].y);
                     }
                     ctx.stroke();
-                }
+                }*/
                 
                 // Draw launch direction indicator
                 if (this.onPlanet) {
@@ -282,13 +268,13 @@
                     const endX = this.x + game.launchDirection.x * indicatorLength;
                     const endY = this.y + game.launchDirection.y * indicatorLength;
                     
-                    ctx.strokeStyle = '#ffff00';
+                   /* ctx.strokeStyle = '#ffff00';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.moveTo(this.x, this.y);
                     ctx.lineTo(endX, endY);
                     ctx.stroke();
-                    
+                    MAY STILL NEED THIS
                     // Arrow head
                     const angle = Math.atan2(game.launchDirection.y, game.launchDirection.x);
                     ctx.fillStyle = '#ffff00';
@@ -297,22 +283,20 @@
                     ctx.lineTo(endX - 10 * Math.cos(angle - 0.3), endY - 10 * Math.sin(angle - 0.3));
                     ctx.lineTo(endX - 10 * Math.cos(angle + 0.3), endY - 10 * Math.sin(angle + 0.3));
                     ctx.closePath();
-                    ctx.fill();
+                    ctx.fill();*/
                 }
                 
-                // Draw player
-                ctx.fillStyle = '#00ff88';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fill();
+                // Draw player as an astronaut
+                const astronautImage = new Image();
+                astronautImage.src = '13-136377_lunartron-png-black-and-white-stock-astronaut-drawing.png'; // Replace with the actual local image path
                 
-                // Draw player glow
-                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 2);
-                gradient.addColorStop(0, 'rgba(0, 255, 136, 0.8)');
-                gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+                // Increase the size of the astronaut image
+                const sizeMultiplier = 3; // Adjust the multiplier to increase size
+                const newRadius = this.radius * sizeMultiplier;
+                
+                // Draw astronaut image
+                ctx.drawImage(astronautImage, this.x - newRadius, this.y - newRadius, newRadius * 2, newRadius * 2);
+                
                 ctx.fill();
             }
         }
@@ -437,9 +421,8 @@
             game.planets = [];
             game.particles = [];
             
-            // Generate planets in a path from bottom to top
-            const mapHeight = 2000;
-            const numPlanets = 15 + galaxyNum * 2;
+            const mapHeight = 200;
+            const numPlanets = galaxyNum * 2;
             
             for (let i = 0; i < numPlanets; i++) {
                 const y = 500 + (i / numPlanets) * mapHeight;
@@ -521,8 +504,6 @@
             ctx.scale(game.zoom, game.zoom);
             ctx.translate(-game.player.x, -game.player.y + game.cameraY);
             
-            // Draw space background effects
-            drawStars();
             
             // Draw planets
             for (let planet of game.planets) {
@@ -534,10 +515,7 @@
                 game.wormhole.draw();
             }
             
-            // Draw particles
-            for (let particle of game.particles) {
-                particle.draw();
-            }
+
             
             // Draw player
             if (game.player) {
@@ -548,37 +526,32 @@
             ctx.restore();
         }
         
-        // Draw stars
-        function drawStars() {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            for (let i = 0; i < 100; i++) {
-                const x = (i * 127) % 800 - 400;
-                const y = (i * 251) % 2000 - 1000;
-                const size = (i % 3) + 1;
-                
-                ctx.beginPath();
-                ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
+      
         
         // Game loop
         function gameLoop() {
             if (!game.isGameOver) {
+            // Initialize score before the first jump
+            if (game.score === undefined) {
+                game.score = 0; // Set initial score to zero
+            }
+
                 // Update game objects
                 if (game.player) {
                     game.player.update();
+            
+                }
+                // Check if out of bounds
+                if (game.player.launchCooldown <= 0) { // Skip out-of-bounds check during launch cooldown
+                    if (game.player.x < 0 || game.player.x > containerWidth || 
+                        game.player.y < 0 || game.player.y > containerHeight+100) {
+                        gameOver();
+                    }
                 }
                 
                 if (game.wormhole) {
                     game.wormhole.update();
                 }
-                
-                // Update particles
-                game.particles = game.particles.filter(particle => {
-                    particle.update();
-                    return particle.life > 0;
-                });
                 
                 // Update camera to follow player
                 if (game.player) {
