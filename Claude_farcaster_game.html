@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planet Hopper</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background-color: black;
+            cursor: crosshair;
+            border: 3px solid white;
+            box-sizing: border-box;
+        }
+        
+        #gameInfo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 16px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="gameInfo">
+        <div>Score: <span id="score">0</span></div>
+        <div>Galaxy: <span id="galaxy">1</span></div>
+    </div>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas to full screen
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        // Initialize canvas size
+        resizeCanvas();
+        
+        // Handle window resize
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Game state
+        const game = {
+            score: 0,
+            galaxy: 1,
+            isRunning: true
+        };
+        
+        // Update score display
+        function updateUI() {
+            document.getElementById('score').textContent = game.score;
+            document.getElementById('galaxy').textContent = game.galaxy;
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update UI
+            updateUI();
+            
+            // Continue loop if game is running
+            if (game.isRunning) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        // Start the game
+        gameLoop();
+        
+        // Basic click handler (we'll expand this later)
+        canvas.addEventListener('click', function(e) {
+            console.log('Canvas clicked at:', e.clientX, e.clientY);
+        });
+        
+        // Touch handler for mobile
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            console.log('Canvas touched at:', touch.clientX, touch.clientY);
+        });
+    </script>
+</body>
+</html>
